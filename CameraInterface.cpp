@@ -47,8 +47,6 @@ Computation comp;
 		}
 		int counter = 0;
 		while (true) {
-			//clock_t x = clock();
-			//cout << "image received " << ((float)x / CLOCKS_PER_SEC) << "\n";
 			Image rawImage;
 			Error error = camera.RetrieveBuffer(&rawImage);
 			if (error != PGRERROR_OK)
@@ -58,22 +56,16 @@ Computation comp;
 			}
 			//////////////////////////////////////////////////////////////////////////////////////////
 			//filter image
-			//m.lock();
 			
 				Image rgbImage;// convert to rgb image
 				rawImage.Convert(FlyCapture2::PIXEL_FORMAT_BGR, &rgbImage);
 				// convert to OpenCV Mat
 				unsigned int rowBytes = (double)rgbImage.GetReceivedDataSize() / (double)rgbImage.GetRows();
 				Mat src = Mat(rgbImage.GetRows(), rgbImage.GetCols(), CV_8UC3, rgbImage.GetData(), rowBytes);
-				//comp.pushReg(src);
 				Mat src_hsv = comp.convertToHSV(src);//convert to hsv image from rgb source image
 				comp.pushHsv(src_hsv);
-				//imshow("regular", src);
-				//waitKey(1);
 				clock_t t = clock();
-				//cout << " hsv pushed " << ((float)t / CLOCKS_PER_SEC) << "\n";
 				float elapsedTime = (((float)t / CLOCKS_PER_SEC) - ((float)tPrev / CLOCKS_PER_SEC));//calculates elapsed time
-					//cout << " t: " << elapsedTime << "\n";
 			    tPrev = t;
 			counter++;
 		}
