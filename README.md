@@ -1,1 +1,2 @@
 # HockeyApp
+This is a repository containing the code I worked on over the summer for Technion University. The code analyzes an live video feed of an air hockey table and returns the current position and velocity of the two mallets and the puck. The code also provides an estimate for the future position of the puck in approximately one second from the current time. The purpose of the project was to feed a convolutional neural network developed by a graduate student with data to analyze.
