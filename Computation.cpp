@@ -8,7 +8,6 @@
 #include <opencv2/video/video.hpp>
 
 #include <chrono>
-//#include <sstream>
 #include <string>
 #include <iostream>
 #include <cmath>
@@ -22,7 +21,7 @@ using namespace FlyCapture2;
 using namespace cv;
 # define M_PI           3.14159265358979323846  /* pi */
 ////////////////////////////////////////////////////////////////
-//values for seeing only sticky note yellow
+//values for seeing only yellow
 int lowHY = 13;
 int highHY = 37;
 int lowSY = 70;
@@ -48,7 +47,6 @@ const int arraySize = 30;
 Point pArray[arraySize];
 bool isFound = false;
 float T = 1;
-//float T = 0.034;
 float frictionAccel = -1;
 int counter;
 queue <Mat> puck;//[vX, vY, pX, pY,id]
@@ -58,7 +56,7 @@ queue <Mat> hsvImages;
 queue <Mat> regImages;
 //methods:
 	void Computation::computation() {
-		//kalman filter set up code
+		//kalman filter set up code: initializes three seperate kalman filters, one for each object to be tracked
 		KalmanFilter kfG(4, 2, 0);
 		kfG.transitionMatrix = *(Mat_<float>(4, 4) << 1, 0, T, 0, 0, 1, 0, T, 0, 0, 1, 0, 0, 0, 0, 1);
 		Mat_<float> measurementG(2, 1);
@@ -90,8 +88,6 @@ queue <Mat> regImages;
 				hsvImages.pop();
 				////////////////////////////////////////////////////////////////////////////////////////
 				//filter image to produce four separate images-only yellow, only blue, only green, and regular unfiltered
-				//Mat imgThresholded;//used for calibrating for different colors- use trackbar code from here http://opencv-srf.blogspot.co.il/2010/09/object-detection-using-color-seperation.html
-				//inRange(src_hsv, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //used for calibrating for different colors
 				Rect cropped = crop();
 				src_hsv = src_hsv(cropped);//crop the image
 				Mat src_filtered_green = onlyGreen(src_hsv);//produce hsv Mat image with only green showing
@@ -119,8 +115,6 @@ queue <Mat> regImages;
 				float vPuck = 0;
 				float vBlue = 0;
 				float vYellow = 0;
-				//clock_t dataT = clock();
-				//cout << " data accessible: " << ((float)dataT / CLOCKS_PER_SEC) << "\n";
 				if (!puck.empty()) {//make sure we don't try to pop an empty queue
 					Mat pA = puck.front();//set Mat pA to the most recent puck value
 					vPuck = sqrt(pow(pA.at<double>(1, 0), 2) + pow(pA.at<double>(1, 0), 2));//solve for resultant velocity
