@@ -19,7 +19,6 @@
 using namespace FlyCapture2;
 using namespace cv;
 using namespace std;
-//ostringstream ss;
 class Computation
 {
 public:
