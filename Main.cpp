@@ -47,6 +47,7 @@ RNG rng(12345);
 
 
 void printScreens(Mat src, Mat green,Mat blue,Mat yellow) {
+	//display images of all three objects
 	imshow("green", green);//show the original image with centers drawn
 	moveWindow("green", 10, 20);
 	imshow("blue", blue);
@@ -57,6 +58,7 @@ void printScreens(Mat src, Mat green,Mat blue,Mat yellow) {
 	moveWindow("yellow", 1000, 500);
 }
 void drawVector(float vX, float vY, float x, float y, float e, Mat source) {
+	//display vector of puck using arrow image with varying size and direction depending on velocity
 	float c = 10;
 	float d = 1000;
 	Point one(x, y);
