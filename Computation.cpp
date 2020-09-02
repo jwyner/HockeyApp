@@ -1,13 +1,11 @@
 //written by Jacob Wyner
 #include "FlyCapture2.h"
-
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/features2d/features2d.hpp"
 #include "opencv2/video/tracking.hpp"
 #include <opencv2/video/video.hpp>
-
 #include <chrono>
 #include <string>
 #include <iostream>
@@ -20,6 +18,7 @@
 
 using namespace FlyCapture2;
 using namespace cv;
+
 # define M_PI           3.14159265358979323846  /* pi */
 ////////////////////////////////////////////////////////////////
 //values for seeing only yellow
@@ -56,99 +55,94 @@ queue <Mat> yellowOne;
 queue <Mat> hsvImages;
 queue <Mat> regImages;
 //methods:
-	void Computation::computation() {
-		//kalman filter set up code: initializes three seperate kalman filters, one for each object to be tracked
-		KalmanFilter kfG(4, 2, 0);
-		kfG.transitionMatrix = *(Mat_<float>(4, 4) << 1, 0, T, 0, 0, 1, 0, T, 0, 0, 1, 0, 0, 0, 0, 1);
-		Mat_<float> measurementG(2, 1);
-		measurementG.setTo(Scalar(0));
-		bool isFirstG = true;
-		vector<Point> gV, gKalmanV;
-		KalmanFilter kfB(4, 2, 0);
-		kfB.transitionMatrix = *(Mat_<float>(4, 4) << 1, 0, T, 0, 0, 1, 0, T, 0, 0, 1, 0, 0, 0, 0, 1);
-		Mat_<float> measurementB(2, 1);
-		measurementB.setTo(Scalar(0));
-		bool isFirstB = true;
-		vector<Point> bV, bKalmanV;
-		KalmanFilter kfY(4, 2, 0);
-		kfY.transitionMatrix = *(Mat_<float>(4, 4) << 1, 0, T, 0, 0, 1, 0, T, 0, 0, 1, 0, 0, 0, 0, 1);
-		Mat_<float> measurementY(2, 1);
-		measurementY.setTo(Scalar(0));
-		bool isFirstY = true;
-		vector<Point> yV, yKalmanV;
+void Computation::computation() {
+	//kalman filter set up code: initializes three seperate kalman filters, one for each object to be tracked
+	KalmanFilter kfG(4, 2, 0);
+	kfG.transitionMatrix = *(Mat_<float>(4, 4) << 1, 0, T, 0, 0, 1, 0, T, 0, 0, 1, 0, 0, 0, 0, 1);
+	Mat_<float> measurementG(2, 1);
+	measurementG.setTo(Scalar(0));
+	bool isFirstG = true;
+	vector<Point> gV, gKalmanV;
+	KalmanFilter kfB(4, 2, 0);
+	kfB.transitionMatrix = *(Mat_<float>(4, 4) << 1, 0, T, 0, 0, 1, 0, T, 0, 0, 1, 0, 0, 0, 0, 1);
+	Mat_<float> measurementB(2, 1);
+	measurementB.setTo(Scalar(0));
+	bool isFirstB = true;
+	vector<Point> bV, bKalmanV;
+	KalmanFilter kfY(4, 2, 0);
+	kfY.transitionMatrix = *(Mat_<float>(4, 4) << 1, 0, T, 0, 0, 1, 0, T, 0, 0, 1, 0, 0, 0, 0, 1);
+	Mat_<float> measurementY(2, 1);
+	measurementY.setTo(Scalar(0));
+	bool isFirstY = true;
+	vector<Point> yV, yKalmanV;
 
-		char key = 0;
-		counter = 0;
-		clock_t tPrev = 0;
-		while (true)
+	char key = 0;
+	counter = 0;
+	clock_t tPrev = 0;
+	while (true)
 		{
-			///////////////////////////////////////////////////////////////////////////////
-			// Get the image
-			if (!hsvImages.empty()) {
-				Mat src_hsv = hsvImages.front();
-				hsvImages.pop();
-				////////////////////////////////////////////////////////////////////////////////////////
-				//filter image to produce four separate images-only yellow, only blue, only green, and regular unfiltered
-				Rect cropped = crop();
-				src_hsv = src_hsv(cropped);//crop the image
-				Mat src_filtered_green = onlyGreen(src_hsv);//produce hsv Mat image with only green showing
-				Mat src_filtered_blue = onlyBlue(src_hsv);//produce hsv Mat image with only blue showing
-				Mat src_filtered_yellow = onlyYellow(src_hsv);//produce hsv Mat image with only yellow showing
-				removeSmallObjects(src_filtered_green);//remove small objects from image  
-				removeSmallObjects(src_filtered_blue);//remove small objects from image
-				removeSmallObjects(src_filtered_yellow);//^^^
-				//////////////////////////////////////////////////////////////////////////////////
-				//apply kalman filter
-				Mat temp;
-				Point g(track(src_filtered_green));//track green circle return location as point-puck
-				temp = runKalman(true, isFirstG, kfG, gV, gKalmanV, g, src_hsv, measurementG, counter);
-				temp.at<double>(4, 0) = counter;                      //^^^^used to be src, changed it to src_hsv, maybe delete from args altogether as it seems that algo does not need it
-				puck.push(temp);//push data into puck queue
-				Point b(track(src_filtered_blue));//track blue circle return location as point
-				temp = runKalman(false, isFirstB, kfB, bV, bKalmanV, b, src_hsv, measurementB, counter);
-				blue.push(temp);//push data into blue queue
-				temp.at<double>(4, 0) = counter;
-				Point yellow(track(src_filtered_yellow));
-				temp = runKalman(false, isFirstY, kfY, yV, yKalmanV, yellow, src_hsv, measurementY, counter);
-				temp.at<double>(4, 0) = counter;
-				yellowOne.push(temp);//push data into yellow queue
-				//get data from this format: [vX, vY, pX, pY,id]
-				float vPuck = 0;
-				float vBlue = 0;
-				float vYellow = 0;
-				if (!puck.empty()) {//make sure we don't try to pop an empty queue
-					Mat pA = puck.front();//set Mat pA to the most recent puck value
-					vPuck = sqrt(pow(pA.at<double>(1, 0), 2) + pow(pA.at<double>(1, 0), 2));//solve for resultant velocity
-					puck.pop();//dequeues puck queue
+		///////////////////////////////////////////////////////////////////////////////
+		// Get the image
+		if (!hsvImages.empty()) {
+			Mat src_hsv = hsvImages.front();
+			hsvImages.pop();
+		////////////////////////////////////////////////////////////////////////////////////////
+			//filter image to produce four separate images-only yellow, only blue, only green, and regular unfiltered
+			Rect cropped = crop();
+			src_hsv = src_hsv(cropped);//crop the image
+			Mat src_filtered_green = onlyGreen(src_hsv);//produce hsv Mat image with only green showing
+			Mat src_filtered_blue = onlyBlue(src_hsv);//produce hsv Mat image with only blue showing
+			Mat src_filtered_yellow = onlyYellow(src_hsv);//produce hsv Mat image with only yellow showing
+			removeSmallObjects(src_filtered_green);//remove small objects from image  
+			removeSmallObjects(src_filtered_blue);//remove small objects from image
+			removeSmallObjects(src_filtered_yellow);//^^^
+			//////////////////////////////////////////////////////////////////////////////////
+			//apply kalman filter
+			Mat temp;
+			Point g(track(src_filtered_green));//track green circle return location as point-puck
+			temp = runKalman(true, isFirstG, kfG, gV, gKalmanV, g, src_hsv, measurementG, counter);
+			temp.at<double>(4, 0) = counter;                      //^^^^used to be src, changed it to src_hsv, maybe delete from args altogether as it seems that algo does not need it
+			puck.push(temp);//push data into puck queue
+			Point b(track(src_filtered_blue));//track blue circle return location as point
+			temp = runKalman(false, isFirstB, kfB, bV, bKalmanV, b, src_hsv, measurementB, counter);
+			blue.push(temp);//push data into blue queue
+			temp.at<double>(4, 0) = counter;
+			Point yellow(track(src_filtered_yellow));
+			temp = runKalman(false, isFirstY, kfY, yV, yKalmanV, yellow, src_hsv, measurementY, counter);
+			temp.at<double>(4, 0) = counter;
+			yellowOne.push(temp);//push data into yellow queue
+			//get data from this format: [vX, vY, pX, pY,id]
+			float vPuck = 0;
+			float vBlue = 0;
+			float vYellow = 0;
+			if (!puck.empty()) {//make sure we don't try to pop an empty queue
+				Mat pA = puck.front();//set Mat pA to the most recent puck value
+				vPuck = sqrt(pow(pA.at<double>(1, 0), 2) + pow(pA.at<double>(1, 0), 2));//solve for resultant velocity
+				puck.pop();//dequeues puck queue
 				}
-				if (!yellowOne.empty()) {
-					Mat yA = yellowOne.front();//set Mat yA to front value
-					 vYellow = sqrt(pow(yA.at<double>(1, 0), 2) + pow(yA.at<double>(1, 0), 2));//solve for resultant velocity
-					yellowOne.pop();//dequeue yellow queue
+			if (!yellowOne.empty()) {
+				Mat yA = yellowOne.front();//set Mat yA to front value
+				 vYellow = sqrt(pow(yA.at<double>(1, 0), 2) + pow(yA.at<double>(1, 0), 2));//solve for resultant velocity
+				yellowOne.pop();//dequeue yellow queue
 				}
-				if (!blue.empty()) {
-					Mat bA = blue.front();//set MAt bA to most recent blue value
-					 vBlue = sqrt(pow(bA.at<double>(1, 0), 2) + pow(bA.at<double>(1, 0), 2));//solve for resultant velocity
-					blue.pop();//dequeue blue queue
+			if (!blue.empty()) {
+				Mat bA = blue.front();//set MAt bA to most recent blue value
+				 vBlue = sqrt(pow(bA.at<double>(1, 0), 2) + pow(bA.at<double>(1, 0), 2));//solve for resultant velocity
+				blue.pop();//dequeue blue queue
 				}
-				//prediction array (pArray) is accessible here
 
-				//imshow("regular", src);
-				//moveWindow("regular", 10, 500);
-			//	key = waitKey(1);
-				//printScreens(src, src_filtered_green, src_filtered_blue, src_filtered_yellow);
-				counter++;//increment counter
-				clock_t t = clock();//used to solve for elapsed time
-				float elapsedTime = (((float)t / CLOCKS_PER_SEC) - ((float)tPrev / CLOCKS_PER_SEC));
-				while(elapsedTime < 0.06){//keep the time consistent
-						t = clock();
-						elapsedTime = (((float)t / CLOCKS_PER_SEC) - ((float)tPrev / CLOCKS_PER_SEC));
+			counter++;//increment counter
+			clock_t t = clock();//used to solve for elapsed time
+			float elapsedTime = (((float)t / CLOCKS_PER_SEC) - ((float)tPrev / CLOCKS_PER_SEC));
+			while(elapsedTime < 0.06){//keep the time consistent
+					t = clock();
+					elapsedTime = (((float)t / CLOCKS_PER_SEC) - ((float)tPrev / CLOCKS_PER_SEC));
 				}
-				tPrev = t;
-				if (counter % 10  == 0) {
-					cout << " t: " << elapsedTime<<" vP:"<<vPuck<< " vY:" << vYellow << " vB:" << vBlue <<" counter "<< counter<<"\n";
-				}
+			tPrev = t;
+			if (counter % 10  == 0) {
+				cout << " t: " << elapsedTime<<" vP:"<<vPuck<< " vY:" << vYellow << " vB:" << vBlue <<" counter "<< counter<<"\n";
 			}
+		    }
 		}
 
 	}
@@ -296,11 +290,10 @@ queue <Mat> regImages;
 		}
 		measurement(0) = p.x;//set x measurement array to the x value from point p
 		measurement(1) = p.y;//set y measurement array to the y value from point p
-							 //kalman predict
+		//kalman prediction
 		Mat prediction = kf.predict();//set the prediction matrix
 		Point predictLocationG(prediction.at<float>(0), prediction.at<float>(1));//get predicted locations
 		Mat estimated = kf.correct(measurement);//update phase
-
 		Point statePoint(estimated.at<float>(0), estimated.at<float>(1));//set state matrix
 		Point measurePoint(p.x, p.y);//potentially get move this to inside if statement below
 		gV.push_back(measurePoint);
@@ -309,11 +302,8 @@ queue <Mat> regImages;
 		Point error = (statePoint - measurePoint);
 		float err = sqrt(pow((error.x + error.y), 2));//calculate error
 		float output = min + ((max - min) / (max - min))*(err - min);//map error to output to draw scaled circle
-		//cv::circle(source, measurePoint, 3, Scalar(0, 0, 255), 3, 1, 0);//draw the center onto the src image
-		//cv::circle(source, statePoint, 10 + output, Scalar(0, 255, 0), 3, 1, 0);//draws circle that gets larger with larger error
 		float vX = kf.statePost.at<float>(2);//get velocity in x direction
 		float vY = kf.statePost.at<float>(3);//get velocity in y direction
-		//Point v(vX, vY);
 		if (vY > -0.4 && vY < 0.4) { vY = 0; }//eliminates some error
 		float c = sqrt(pow(vX, 2) + pow(vY, 2));//find resultant velocity
 		//sets data4d matrix with values
@@ -323,8 +313,6 @@ queue <Mat> regImages;
 		data4d.at<double>(3) = p.y;//set y position
 		data4d.at<double>(4) = 0;//set counter as 0 for now, it is set it with correct value later
 		float theta = (atan(vY / vX))*(180 / M_PI);//angle in degrees
-		//cout << c << "\n";
-		//drawVector(vX, vY, measurePoint.x, measurePoint.y, c, source);//draw vector proportional to  resultant velocity-doesnt work with threading
 		if (isPuck) {//check if the object being assessed is the puck
 			if (c < 0.3) { c = 0; }//if c is really small set c = 0 to eliminate error
 			if (c < 4) {
@@ -334,9 +322,6 @@ queue <Mat> regImages;
 			else {
 				frictionAccel = -2;//set coefficient of friction to higher value as speed increases
 				predictPuckLocation(source, measurePoint, vX, vY, frictionAccel);//return predicted puck location
-			}
-			for (int i = 0; i < arraySize + 1; i++) {
-				//cv::circle(source, pArray[i], 2, Scalar(0, 0, 255), 3, 8, 0);//print predicted path from path array
 			}
 
 		}
