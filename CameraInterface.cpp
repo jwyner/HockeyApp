@@ -20,8 +20,6 @@
 #include "CameraInterface.h"
 using namespace FlyCapture2;
 using namespace cv;
-//using namespace std;
-//ostringstream ss;
 Computation comp;
 	bool CameraInterface::getImage() {
 		clock_t tPrev = 0;
@@ -57,24 +55,17 @@ Computation comp;
 			}
 			//////////////////////////////////////////////////////////////////////////////////////////
 			//filter image
-			
-				Image rgbImage;// convert to rgb image
-				rawImage.Convert(FlyCapture2::PIXEL_FORMAT_BGR, &rgbImage);
-				// convert to OpenCV Mat
-				unsigned int rowBytes = (double)rgbImage.GetReceivedDataSize() / (double)rgbImage.GetRows();
-				Mat src = Mat(rgbImage.GetRows(), rgbImage.GetCols(), CV_8UC3, rgbImage.GetData(), rowBytes);
-				Mat src_hsv = comp.convertToHSV(src);//convert to hsv image from rgb source image
-				comp.pushHsv(src_hsv);
-				clock_t t = clock();
-				float elapsedTime = (((float)t / CLOCKS_PER_SEC) - ((float)tPrev / CLOCKS_PER_SEC));//calculates elapsed time
-			    tPrev = t;
+			Image rgbImage;// convert to rgb image
+			rawImage.Convert(FlyCapture2::PIXEL_FORMAT_BGR, &rgbImage);
+			// convert to OpenCV Mat
+			unsigned int rowBytes = (double)rgbImage.GetReceivedDataSize() / (double)rgbImage.GetRows();
+			Mat src = Mat(rgbImage.GetRows(), rgbImage.GetCols(), CV_8UC3, rgbImage.GetData(), rowBytes);
+			Mat src_hsv = comp.convertToHSV(src);//convert to hsv image from rgb source image
+			comp.pushHsv(src_hsv);
+			clock_t t = clock();
+			float elapsedTime = (((float)t / CLOCKS_PER_SEC) - ((float)tPrev / CLOCKS_PER_SEC));//calculates elapsed time
+			tPrev = t;
 			counter++;
-		}
-		error = camera.StopCapture();
-		if (error != PGRERROR_OK)
-		{
-			// This may fail when the camera was removed, so don't show
-			// an error message
 		}
 		camera.Disconnect();
 	}
