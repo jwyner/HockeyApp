@@ -9,7 +9,6 @@
 #include <opencv2/video/video.hpp>
 
 #include <chrono>
-//#include <sstream>
 #include <string>
 #include <iostream>
 #include <cmath>
@@ -28,42 +27,21 @@ http://docs.opencv.org/master/dd/d6a/classcv_1_1KalmanFilter.html#a0657173e411ac
 http://opencvexamples.blogspot.com/2014/01/kalman-filter-implementation-tracking.html
 http://www.morethantechnical.com/2011/06/17/simple-kalman-filter-for-tracking-using-opencv-2-2-w-code/
 */
-//using namespace FlyCapture2;
-//using namespace cv;
-//using namespace std;
-//ostringstream ss;
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //constants:
 Mat I = Mat::eye(4, 4, DataType<float>::type);
 Mat measure(4, 1, DataType<float>::type);
+
 int minX = 222;
 int minY = 10;
 int maxX = 222 + 250;
 int maxY = 10 + 445;
+
 unsigned int type = CV_32F;
+
 bool isRobotGoal = false;
 bool isHumanGoal = false; 
-//Computation comp;
-//CameraInterface cam;
-
-/*queue <Point> puckLoc;
-queue <Point> blueLoc;
-queue <Point> yellowLoc;
-
-queue <Point> puckEstLoc;
-queue <Point> blueEstLoc;
-queue <Point> yellowEstLoc;
-
-queue <Point> puckVel;
-queue <Point> blueVel;
-queue <Point> yellowVel;*/
-
-
-
-
 
 RNG rng(12345);
 
@@ -90,24 +68,13 @@ void drawVector(float vX, float vY, float x, float y, float e, Mat source) {
 	}
 }
 
-//runKalman(bool isPuck, bool isFirst, KalmanFilter kf, vector<Point> gV, vector<Point> kalmanV, Point p, Mat source, Mat_<float> measurement, int counter)
-
-
-
 ////////////////////////////////////////////////////////////////////////////////
+
 int main()
-{
-	//cam.getImage();
-	//compu.computation();
-	//Mat(*getImage)(const Mat);
-	
-		thread t1(&CameraInterface::getImage,CameraInterface());
+{	//initiate threads to perform tracking and velocity calculations
+	thread t1(&CameraInterface::getImage,CameraInterface());
     	thread t2(&Computation::run, Computation());
-		cout << "*******" << "\n";
-		t1.join();
-		t2.join();
+	t1.join();
+	t2.join();
 }
-/*void computation(bool isFirstG, bool isFirstY, bool isFirstB, KalmanFilter kfG, KalmanFilter kfY, 
-	KalmanFilter kfB, vector<Point> gV,  vector<Point> yV, vector<Point> bV, vector<Point> gKalmanV, 
-	vector<Point> yKalmanV, vector<Point> bKalmanV, Mat_<float> measurementG, Mat_<float> measurementY, Mat_<float> measurementB){
-	*/
+
