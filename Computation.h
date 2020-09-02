@@ -1,13 +1,11 @@
 //written by Jacob Wyner
 #include "FlyCapture2.h"
-
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/features2d/features2d.hpp"
 #include "opencv2/video/tracking.hpp"
 #include <opencv2/video/video.hpp>
-
 #include <chrono>
 #include <sstream>
 #include <string>
@@ -17,9 +15,11 @@
 #include <queue>
 #include <thread>
 #include <mutex>
+
 using namespace FlyCapture2;
 using namespace cv;
 using namespace std;
+
 class Computation
 {
 public:
@@ -30,6 +30,7 @@ public:
 	void pushHsv(Mat img);
 	void popDisk();
 	void popBlue();
+	void run();
 	void popYellow();
 	bool isDiskEmpty();
 	bool isBlueEmpty();
@@ -37,19 +38,17 @@ public:
 	Mat diskFront();
 	Mat blueFront();
 	Mat yellowFront();
-	void run();
-	Rect crop();
 	Mat convertToHSV(Mat src);
+	Rect crop();
 protected:
-	void computation();
+	Mat runKalman(bool isPuck, bool isFirst, KalmanFilter kf, vector<Point> gV,
+		vector<Point> kalmanV, Point p, Mat source, Mat_<float> measurement, int counter);
 	Mat convertToGray(Mat src);
 	Mat onlyGreen(Mat src);
 	Mat onlyBlue(Mat src);
-	Mat onlyYellow(Mat src);
-	Point track(Mat src);
+	Mat onlyYellow(Mat src);	
+	Point track(Mat src);	
+	void computation();
 	void removeSmallObjects(Mat src);
 	void predictPuckLocation(Mat source, Point currentLocation, float vX, float vY, float a);
-	Mat runKalman(bool isPuck, bool isFirst, KalmanFilter kf, vector<Point> gV,
-		vector<Point> kalmanV, Point p, Mat source, Mat_<float> measurement, int counter);
-		
 };
